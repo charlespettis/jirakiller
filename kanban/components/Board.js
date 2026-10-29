@@ -1,12 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import Card from './Card';
 import Column from './Column';
 import GridBackground from './GridBackground';
 
 // The board surface: a grid that grows with its content, and the columns laid
-// out across it. Double tapping empty grid appends a new, unnamed column with
-// its label input focused.
+// out across it. Double tapping empty grid appends a new, unnamed column;
+// double tapping a column appends a blank card to it. Either way the new
+// item's text input is focused, ready to be typed into.
 export default function Board({ initialColumns = [] }) {
   const [columns, setColumns] = useState(initialColumns);
   const [focusedId, setFocusedId] = useState(null);
@@ -24,6 +26,33 @@ export default function Board({ initialColumns = [] }) {
     );
   }, []);
 
+  const addCard = useCallback((columnId) => {
+    const id = `card-${nextId.current++}`;
+    setColumns((previous) =>
+      previous.map((column) =>
+        column.id === columnId
+          ? { ...column, cards: [...column.cards, { id, title: '' }] }
+          : column
+      )
+    );
+    setFocusedId(id);
+  }, []);
+
+  const setCardTitle = useCallback((columnId, cardId, title) => {
+    setColumns((previous) =>
+      previous.map((column) =>
+        column.id === columnId
+          ? {
+              ...column,
+              cards: column.cards.map((card) =>
+                card.id === cardId ? { ...card, title } : card
+              ),
+            }
+          : column
+      )
+    );
+  }, []);
+
   return (
     <ScrollView horizontal contentContainerStyle={styles.grow}>
       <ScrollView contentContainerStyle={styles.grow}>
@@ -38,7 +67,20 @@ export default function Board({ initialColumns = [] }) {
                 label={column.name}
                 onLabelChange={(name) => renameColumn(column.id, name)}
                 autoFocus={column.id === focusedId}
+                onDoubleTap={() => addCard(column.id)}
                 items={column.cards}
+                renderItem={(card) => (
+                  <Card
+                    title={card.title}
+                    onTitleChange={(title) =>
+                      setCardTitle(column.id, card.id, title)
+                    }
+                    autoFocus={card.id === focusedId}
+                    ticket={card.ticket}
+                    tag={card.tag}
+                    color={card.color}
+                  />
+                )}
               />
             ))}
           </View>

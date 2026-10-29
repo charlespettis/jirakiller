@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import useDoubleTap from '../hooks/useDoubleTap';
+
 // A single board column: a text label across the top, then one item per line
 // stacked down the column. With no label yet, the top becomes a text input so
 // the column can be named in place; onLabelChange fires on submit or blur.
@@ -10,6 +12,7 @@ export default function Column({
   placeholder = 'Column name',
   autoFocus = false,
   onPress,
+  onDoubleTap,
   items = [],
   renderItem,
   keyExtractor,
@@ -21,6 +24,7 @@ export default function Column({
 }) {
   const [draft, setDraft] = useState('');
   const hasLabel = label != null && String(label).length > 0;
+  const handlePress = useDoubleTap(onDoubleTap, onPress);
 
   const commitDraft = () => {
     const next = draft.trim();
@@ -36,7 +40,7 @@ export default function Column({
   return (
     // Pressable, not View: the column claims presses that land on it, so a tap
     // or double tap on a column never falls through to the grid behind it.
-    <Pressable style={[styles.column, { width }, style]} onPress={onPress}>
+    <Pressable style={[styles.column, { width }, style]} onPress={handlePress}>
       {hasLabel ? (
         <Text style={[styles.label, labelStyle]} numberOfLines={1}>
           {label}

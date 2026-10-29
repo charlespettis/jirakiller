@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-// Two taps closer together than this count as a double tap.
-const DOUBLE_TAP_MS = 300;
+import useDoubleTap from '../hooks/useDoubleTap';
 
 // Draws a grid that covers at minimum the whole screen, and grows past it to
 // cover the full content size when it wraps content that outgrows the viewport.
@@ -19,7 +18,6 @@ export default function GridBackground({
 }) {
   const window = useWindowDimensions();
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const lastTapAt = useRef(0);
 
   const onLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
@@ -32,15 +30,8 @@ export default function GridBackground({
 
   // Taps land on the line layer, which sits behind children, so only presses on
   // empty grid get here — anything rendered on top handles its own touches.
-  const onPress = useCallback(
+  const reportDoubleTap = useCallback(
     (event) => {
-      const now = Date.now();
-      if (now - lastTapAt.current > DOUBLE_TAP_MS) {
-        lastTapAt.current = now;
-        return;
-      }
-
-      lastTapAt.current = 0;
       const { locationX, locationY } = event.nativeEvent;
       onDoubleTap({
         x: locationX,
@@ -51,6 +42,8 @@ export default function GridBackground({
     },
     [onDoubleTap, cellSize]
   );
+
+  const onPress = useDoubleTap(onDoubleTap ? reportDoubleTap : undefined);
 
   const lines = useMemo(() => {
     // Never fewer lines than the screen needs, so the grid is already painted
