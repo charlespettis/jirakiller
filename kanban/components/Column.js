@@ -1,9 +1,15 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 // A single board column: a text label across the top, then one item per line
-// stacked down the column.
+// stacked down the column. With no label yet, the top becomes a text input so
+// the column can be named in place; onLabelChange fires on submit or blur.
 export default function Column({
   label,
+  onLabelChange,
+  placeholder = 'Column name',
+  autoFocus = false,
+  onPress,
   items = [],
   renderItem,
   keyExtractor,
@@ -13,6 +19,14 @@ export default function Column({
   labelStyle,
   children,
 }) {
+  const [draft, setDraft] = useState('');
+  const hasLabel = label != null && String(label).length > 0;
+
+  const commitDraft = () => {
+    const next = draft.trim();
+    if (next && onLabelChange) onLabelChange(next);
+  };
+
   const keyFor = (item, index) => {
     if (keyExtractor) return keyExtractor(item, index);
     if (item && item.id != null) return String(item.id);
@@ -20,11 +34,26 @@ export default function Column({
   };
 
   return (
-    <View style={[styles.column, { width }, style]}>
-      {label == null ? null : (
+    // Pressable, not View: the column claims presses that land on it, so a tap
+    // or double tap on a column never falls through to the grid behind it.
+    <Pressable style={[styles.column, { width }, style]} onPress={onPress}>
+      {hasLabel ? (
         <Text style={[styles.label, labelStyle]} numberOfLines={1}>
           {label}
         </Text>
+      ) : (
+        <TextInput
+          style={[styles.label, styles.labelInput, labelStyle]}
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={commitDraft}
+          onBlur={commitDraft}
+          placeholder={placeholder}
+          placeholderTextColor="#a1a1aa"
+          autoFocus={autoFocus}
+          returnKeyType="done"
+          submitBehavior="blurAndSubmit"
+        />
       )}
       <View style={[styles.items, { gap }]}>
         {items.map((item, index) => (
@@ -34,14 +63,16 @@ export default function Column({
         ))}
         {children}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   column: {
     flexDirection: 'column',
-    alignSelf: 'flex-start',
+    // Fill the height the parent row offers, which the board sizes to the
+    // screen, rather than shrinking to the items in the column.
+    alignSelf: 'stretch',
     padding: 12,
   },
   label: {
@@ -51,6 +82,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
+  },
+  labelInput: {
+    // Keep the input on the same baseline as the Text it replaces.
+    paddingVertical: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#d4d4d8',
   },
   items: {
     flexDirection: 'column',

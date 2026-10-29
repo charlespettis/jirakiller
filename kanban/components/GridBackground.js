@@ -1,5 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+
+// Two taps closer together than this count as a double tap.
+const DOUBLE_TAP_MS = 300;
 
 // Draws a grid that covers at minimum the whole screen, and grows past it to
 // cover the full content size when it wraps content that outgrows the viewport.
@@ -10,11 +13,13 @@ export default function GridBackground({
   lineColor = '#e4e4e7',
   lineWidth = StyleSheet.hairlineWidth,
   backgroundColor = '#fff',
+  onDoubleTap,
   style,
   children,
 }) {
   const window = useWindowDimensions();
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const lastTapAt = useRef(0);
 
   const onLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
@@ -24,6 +29,28 @@ export default function GridBackground({
         : { width, height }
     );
   }, []);
+
+  // Taps land on the line layer, which sits behind children, so only presses on
+  // empty grid get here — anything rendered on top handles its own touches.
+  const onPress = useCallback(
+    (event) => {
+      const now = Date.now();
+      if (now - lastTapAt.current > DOUBLE_TAP_MS) {
+        lastTapAt.current = now;
+        return;
+      }
+
+      lastTapAt.current = 0;
+      const { locationX, locationY } = event.nativeEvent;
+      onDoubleTap({
+        x: locationX,
+        y: locationY,
+        column: Math.floor(locationX / cellSize),
+        row: Math.floor(locationY / cellSize),
+      });
+    },
+    [onDoubleTap, cellSize]
+  );
 
   const lines = useMemo(() => {
     // Never fewer lines than the screen needs, so the grid is already painted
@@ -37,6 +64,8 @@ export default function GridBackground({
     };
   }, [size.width, size.height, window.width, window.height, cellSize]);
 
+  const LineLayer = onDoubleTap ? Pressable : View;
+
   return (
     <View
       style={[
@@ -46,7 +75,11 @@ export default function GridBackground({
       ]}
       onLayout={onLayout}
     >
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LineLayer
+        style={StyleSheet.absoluteFill}
+        pointerEvents={onDoubleTap ? 'auto' : 'none'}
+        {...(onDoubleTap ? { onPress } : null)}
+      >
         {lines.columns.map((left) => (
           <View
             key={`v-${left}`}
@@ -65,7 +98,7 @@ export default function GridBackground({
             ]}
           />
         ))}
-      </View>
+      </LineLayer>
       {children}
     </View>
   );
