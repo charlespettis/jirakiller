@@ -42,7 +42,15 @@ export default function Column({
     // or double tap on a column never falls through to the grid behind it.
     <Pressable style={[styles.column, { width }, style]} onPress={handlePress}>
       {hasLabel ? (
-        <Text style={[styles.label, labelStyle]} numberOfLines={1}>
+        // pointerEvents none so presses fall through to the column behind it,
+        // and selectable false so a double tap names a card instead of
+        // highlighting the label text.
+        <Text
+          style={[styles.label, labelStyle]}
+          numberOfLines={1}
+          pointerEvents="none"
+          selectable={false}
+        >
           {label}
         </Text>
       ) : (
